@@ -108,6 +108,16 @@ class EmulatorActivity : ComponentActivity() {
         PathCache.activeUserSub = userSub
         SettingsRepo.load(this)
         SettingsRepo.activateFor(this, gameBase)
+        // Built-in single-screen profile, when the ROM file's header identifies the game.
+        // Archives and unreadable headers are identified from RAM once the game runs.
+        val launchGameCode = GameProfiles.readGameCodeFromRom(this, displayName, romPath, romUri)
+        com.seedlessds.app.AppLog.i(TAG, "game code from file: ${launchGameCode ?: "unknown"}")
+        GameProfiles.pending(this, gameBase, launchGameCode)?.let { profile ->
+            GameProfiles.markApplied(this, launchGameCode!!)
+            SettingsRepo.savePerGame(this, gameBase, profile.apply(SettingsRepo.current))
+            android.widget.Toast.makeText(this, getString(AppR.string.profile_applied, getString(profile.name)),
+                android.widget.Toast.LENGTH_LONG).show()
+        }
         SettingsRepo.current.let { c ->
             com.seedlessds.app.AppLog.i(TAG, "game: $displayName uri=$romUri path=$romPath")
             com.seedlessds.app.AppLog.i(TAG, "settings: scale=${SettingsRepo.scaleRequested()} preset=${c.dualScreenPreset} sameSize=${c.dsSameSize} extType=${c.extDisplayType} extScreen=${c.extDisplayScreen} layout=${c.screenLayout} rotation=${c.rotationMode} saves=${runCatching { SaveLocation.folderLabel(this) }.getOrDefault("?")}")
@@ -165,6 +175,7 @@ class EmulatorActivity : ComponentActivity() {
                     initialSettings = SettingsRepo.global,
                     initialPerGame = SettingsRepo.current,
                     gameTitle = gameBase,
+                    launchGameCode = launchGameCode,
                     gameIcon = gameIcon,
                     gameCoverUrl = coverUrl.value,
                     gamePlatformLabel = if (displayName.endsWith(".dsi", true)) getString(AppR.string.common_dsiware) else getString(AppR.string.boot_nintendo_ds_2),

@@ -131,6 +131,7 @@ fun EmulatorScreen(
     onApplyExternal: () -> Unit = {},
     extTapCount: Int = 0,
     onExtEditState: (Boolean, Boolean) -> Unit = { _, _ -> },
+    launchGameCode: String? = null,
 ) {
     val uiContext = androidx.compose.ui.platform.LocalContext.current
     var overlay by remember { mutableStateOf(Overlay.NONE) }
@@ -231,16 +232,20 @@ fun EmulatorScreen(
     // A menu swallows key releases, so a held peek would otherwise stay on.
     androidx.compose.runtime.LaunchedEffect(emulationBlocked) { if (emulationBlocked) setPeek(false) }
 
-    // Built-in single-screen profiles: once the game is running its header is in RAM, so the
-    // game code is known whatever the ROM's file name or archive format.
+    // Built-in single-screen profiles for games the ROM file could not identify (archives,
+    // unusual headers): once the game runs, its header is in RAM. A firmware boot writes it
+    // partway through booting, so keep looking for a while.
     androidx.compose.runtime.LaunchedEffect(coreReady) {
-        if (!coreReady) return@LaunchedEffect
-        val code = GameProfiles.readGameCode() ?: return@LaunchedEffect
-        com.seedlessds.app.AppLog.i("lessscreen", "game code $code")
-        val profile = GameProfiles.forCode(code) ?: return@LaunchedEffect
-        if (com.seedlessds.app.control.RuntimeControl.settings != null) return@LaunchedEffect
-        if (SettingsRepo.hasPerGame(ctx, gameTitle) || GameProfiles.wasApplied(ctx, code)) return@LaunchedEffect
-        GameProfiles.markApplied(ctx, code)
+        if (!coreReady || launchGameCode != null) return@LaunchedEffect
+        var code: String? = null
+        for (attempt in 0 until 120) {
+            code = GameProfiles.readGameCodeFromRam()
+            if (code != null) break
+            kotlinx.coroutines.delay(1000)
+        }
+        com.seedlessds.app.AppLog.i("lessscreen", "game code from RAM: ${code ?: "unknown"}")
+        val profile = GameProfiles.pending(ctx, gameTitle, code) ?: return@LaunchedEffect
+        GameProfiles.markApplied(ctx, code!!)
         val next = profile.apply(SettingsRepo.current)
         perGame = next
         onApplyPerGame(next)

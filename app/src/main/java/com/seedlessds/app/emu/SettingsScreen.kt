@@ -750,6 +750,20 @@ fun SettingsScreen(
     NavRow(uiContext.getString(R.string.common_system_tools), uiContext.getString(R.string.settings_install_ds_bios_export_data), openTools)
     NavRow(uiContext.getString(R.string.settings_multiplayer_wifi), uiContext.getString(R.string.settings_local_multiplayer_status), openWifi)
 
+    if (globalSettings && com.seedlessds.app.update.Updater.enabled) {
+        val updater = com.seedlessds.app.update.Updater
+        var autoCheck by remember { mutableStateOf(updater.autoCheck(ctx)) }
+        val updateScope = rememberCoroutineScope()
+        Group(uiContext.getString(R.string.update_group))
+        SwitchRow(uiContext.getString(R.string.update_auto), uiContext.getString(R.string.update_auto_desc), autoCheck) {
+            autoCheck = it; updater.setAutoCheck(ctx, it)
+        }
+        NavRow(uiContext.getString(R.string.update_check_now),
+            uiContext.getString(R.string.update_check_now_desc, com.seedlessds.app.BuildConfig.VERSION_NAME)) {
+            updateScope.launch { updater.checkNow(ctx.applicationContext) }
+        }
+    }
+
     if (globalSettings) {
         var alternative by remember { mutableStateOf(LauncherIcon.isAlternative(ctx)) }
         var changing by remember { mutableStateOf(false) }

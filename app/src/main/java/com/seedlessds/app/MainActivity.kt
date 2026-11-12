@@ -8,6 +8,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import androidx.core.view.WindowCompat
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -46,6 +48,10 @@ class MainActivity : ComponentActivity() {
             isAppearanceLightNavigationBars = !dark
         }
         val alternativeIcon = LauncherIcon.isAlternative(this)
+        if (savedInstanceState == null) {
+            val app = applicationContext
+            lifecycleScope.launch { com.seedlessds.app.update.Updater.checkInBackground(app) }
+        }
         setContent {
             SeedlessTheme {
                 com.seedlessds.app.emu.SeedlessLaunchIntro(enabled = savedInstanceState == null, alternative = alternativeIcon) {
@@ -60,6 +66,7 @@ class MainActivity : ComponentActivity() {
                     var inSettings by remember { mutableStateOf(false) }
                     var settingsGameKey by remember { mutableStateOf<String?>(null) }
 
+                    com.seedlessds.app.update.UpdatePrompt()
                     if (inSettings) {
                         SettingsHost(gameKey = settingsGameKey) { inSettings = false }
                     } else {

@@ -14,11 +14,20 @@ SeedlessDS is the smaller sibling of WatermelonDS: the same watermelon idea, wit
 
 ## LessScreenDS: single-screen focus
 
-LessScreenDS is a fork aimed at handhelds with one display, where showing both DS screens at full size leaves each one small.
+LessScreenDS is a fork for handhelds with one display, typically a 4:3 panel. Showing both DS screens at once on such a display leaves each one at half size or less.
 
-- **Focus layout** (Settings → Screens → Single-screen focus): one DS screen fills the display and the other floats as an inset in a corner. You can set the inset's size and corner, or hide it. The large screen shifts away from the inset to use any spare space; on a 1240×1080 panel this puts the inset mostly in the strip below a 4:3 picture.
-- **Hotkeys**: *Peek other screen (hold)* swaps the screens only while held. *Show/hide inset* and *Focus layout on/off* are toggles. Map them to physical buttons in the gamepad mapper, or put them on the special on-screen buttons. The existing *Swap screens* hotkey chooses which screen is large.
-- **Built-in game profiles**: the game is identified by the code in its cartridge header, read from RAM after boot, so file names and archives don't matter. The first time a known game runs, its profile is saved as that game's per-game settings, which you can then edit or reset. Currently only Mario Kart DS (`AMC*`) has a profile: the top screen is large and the map inset sits bottom-right.
+- **Focus layout** (Settings → Screens → Single-screen focus): one DS screen fills the display and the other appears as a **small screen** in a corner, on top of it. You can set its size and corner, or hide it. On a 4:3 display the big screen fills the panel, so the small screen covers that corner. On displays with spare room, such as 1240×1080, the big screen moves away from the small one so it sits mostly in the spare space.
+- **Hotkeys**: *Peek other screen (hold)* swaps the screens only while held. *Show/hide small screen* and *Focus layout on/off* are toggles. Map them to physical buttons in Settings → Physical controller → Map gamepad buttons, or put them on the special on-screen buttons. The existing *Swap screens* hotkey chooses which screen is big.
+- **Built-in game profiles**: games are identified by the 4-letter code in the cartridge header. The first three letters name the game and the last one is the region, so one profile covers every region. The code is read from the ROM file when the game starts (and checked against the header's checksum), or from RAM once it is running, which covers archives and firmware boots. The first time a known game runs, its profile is saved as that game's per-game settings, which you can then edit or reset. Currently only Mario Kart DS has a profile (AMCE, AMCP, AMCJ, AMCK): the top screen is big and the map sits bottom-right, away from the item slot (top-left) and lap counter (top-right).
+
+### Releases and updates
+
+Every push to `main`, every `v*` tag and every manual run of the **Build** workflow on `main` publishes a signed APK and an `update.json` to [GitHub Releases](../../releases). Other branches and pull requests are built and tested, and their debug APK is attached to the workflow run.
+
+- **In-app updates:** release builds check the latest release when the library opens (at most every 6 hours). If it is newer, they offer to download it, verify its SHA-256 and open Android's installer. Turn this off or check manually in Settings → Advanced → App updates.
+- **Obtainium** works too: add this repository's URL.
+- **Signing:** releases are signed with a key stored in two repository secrets, `RELEASE_KEYSTORE_BASE64` (the PKCS#12 keystore, base64-encoded, key alias `lessscreen`) and `RELEASE_KEYSTORE_PASSWORD`. Without them, the workflow builds a debug APK and publishes nothing. Keep the key: Android only installs an update signed with the same key.
+- The app ID is `com.lessscreends.app`, so LessScreenDS installs alongside SeedlessDS.
 
 ## What it is
 
@@ -71,7 +80,7 @@ Map DS buttons and emulator actions to physical controls: fast-forward, quick sa
 Launchers can start a game through the `LaunchGame` activity alias:
 
 ```sh
-am start -n com.seedlessds.app/com.seedlessds.app.LaunchGame \
+am start -n com.lessscreends.app/com.seedlessds.app.LaunchGame \
     -e rom_path /storage/emulated/0/roms/nds/game.nds \
     --ei load_slot 1
 ```
@@ -102,13 +111,13 @@ git submodule update --init --recursive
 
 Use JDK 25, Android SDK 35 with Build Tools 36.0.0, NDK `25.2.9519653` and CMake `3.22.1`. The Gradle wrapper selects Gradle `9.7.0`, with Android Gradle Plugin `9.3.1` and Kotlin/Compose compiler `2.4.21`. Set the SDK location through `local.properties` or your Android SDK environment. The Gradle daemon requires a locally installed JDK 25. Java/Kotlin bytecode remains targeted to Java 17 and is converted to Android DEX; the minimum Android API level remains 21. The native build downloads pinned libarchive, unarr and LZMA SDK sources with SHA-256 verification; see [third-party licenses](core/third_party/LICENSES.md).
 
-Build the debug app (`com.seedlessds.app.debug`):
+Build the debug app (`com.lessscreends.app.debug`):
 
 ```sh
 ./gradlew assembleDebug
 ```
 
-For the signed release (`com.seedlessds.app`), configure `MELONDS_KEYSTORE`, `MELONDS_KEYSTORE_PASSWORD`, `MELONDS_KEY_ALIAS` and `MELONDS_KEY_PASSWORD` in your untracked `local.properties`, then run:
+For the signed release (`com.lessscreends.app`), configure `MELONDS_KEYSTORE`, `MELONDS_KEYSTORE_PASSWORD`, `MELONDS_KEY_ALIAS` and `MELONDS_KEY_PASSWORD` in your untracked `local.properties`, then run:
 
 ```sh
 ./gradlew assembleRelease

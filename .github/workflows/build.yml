@@ -1,0 +1,134 @@
+name: Build
+
+# Every push and pull request builds the app and runs the unit tests.
+# Pushes to main, version tags (v*) and manual runs on main also publish a signed
+# GitHub release, which the in-app updater and Obtainium pick up.
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    env:
+      RELEASE: ${{ (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') }}
+      LS_BUILD_NUMBER: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Install Android SDK packages
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install \
+            "platforms;android-35" "build-tools;36.0.0" "ndk;25.2.9519653" "cmake;3.22.1" > /dev/null
+
+      - name: Unit tests
+        run: ./gradlew --stacktrace testDebugUnitTest
+
+      - name: Check release signing key
+        id: signing
+        if: env.RELEASE == 'true'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASSWORD" ]; then
+            echo "::warning title=No release published::Add the RELEASE_KEYSTORE_BASE64 and RELEASE_KEYSTORE_PASSWORD repository secrets to publish signed releases. Built a debug APK instead."
+            echo "### No release published" >> "$GITHUB_STEP_SUMMARY"
+            echo "The repository secrets RELEASE_KEYSTORE_BASE64 and RELEASE_KEYSTORE_PASSWORD are not set, so this run built a debug APK instead of a signed release." >> "$GITHUB_STEP_SUMMARY"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
+      - name: Build debug APK
+        if: steps.signing.outputs.ready != 'true'
+        run: ./gradlew --stacktrace assembleDebug
+
+      - name: Upload debug APK
+        if: steps.signing.outputs.ready != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: LessScreenDS-debug-${{ github.run_number }}
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - name: Build signed release APK
+        if: steps.signing.outputs.ready == 'true'
+        env:
+          LS_KEYSTORE_FILE: ${{ runner.temp }}/release.keystore
+          LS_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          LS_UPDATE_REPO: ${{ github.repository }}
+        run: ./gradlew --stacktrace assembleRelease
+
+      - name: Publish GitHub release
+        if: steps.signing.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          meta=app/build/outputs/apk/release/output-metadata.json
+          version_name=$(jq -r '.elements[0].versionName' "$meta")
+          version_code=$(jq -r '.elements[0].versionCode' "$meta")
+          src=app/build/outputs/apk/release/$(jq -r '.elements[0].outputFile' "$meta")
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then tag="${GITHUB_REF_NAME}"; else tag="v${version_name}"; fi
+          apk="LessScreenDS-${version_name}.apk"
+          cp "$src" "$apk"
+          sha=$(sha256sum "$apk" | cut -d' ' -f1)
+          jq -n \
+            --argjson versionCode "$version_code" \
+            --arg versionName "$version_name" \
+            --arg tag "$tag" \
+            --arg apk "$apk" \
+            --arg url "https://github.com/${GITHUB_REPOSITORY}/releases/download/${tag}/${apk}" \
+            --arg sha256 "$sha" \
+            --argjson size "$(stat -c %s "$apk")" \
+            '{versionCode: $versionCode, versionName: $versionName, tag: $tag, apk: $apk, url: $url, sha256: $sha256, size: $size}' \
+            > update.json
+          cat update.json
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            # A re-run of the same build: replace the files on the existing release.
+            gh release upload "$tag" "$apk" update.json --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$tag" "$apk" update.json \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "LessScreenDS ${version_name}" \
+              --generate-notes \
+              --latest
+          fi
+          {
+            echo "### Released ${tag}"
+            echo "APK: \`${apk}\` (versionCode ${version_code}, SHA-256 \`${sha}\`)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload release APK
+        if: steps.signing.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: LessScreenDS-release-${{ github.run_number }}
+          path: LessScreenDS-*.apk
+          if-no-files-found: error

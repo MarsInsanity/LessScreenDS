@@ -31,7 +31,7 @@
     <string name="achievements_this_game_isn_t_identified_in_retroachievements">"This game isn\'t identified in RetroAchievements."</string>
     <string name="achievements_unlocked">"  UNLOCKED"</string>
     <string name="achievements_welcome">"Welcome, %1$s!"</string>
-    <string name="app_name" translatable="false">"SeedlessDS"</string>
+    <string name="app_name" translatable="false">"LessScreenDS"</string>
     <string name="birthday_month_day" translatable="false">"%1$s %2$d"</string>
     <string name="boot_nintendo_ds" translatable="false">"NINTENDO DS"</string>
     <string name="boot_nintendo_ds_2" translatable="false">"Nintendo DS"</string>
@@ -819,25 +819,41 @@
     <string name="settings_alt_app_icon_error">Could not change the app icon. Try again.</string>
     <string name="focus_group">"Single-screen focus (LessScreen)"</string>
     <string name="focus_layout">"Focus layout"</string>
-    <string name="focus_layout_desc">"One DS screen fills the display and the other floats as a small inset in a corner. Ignored while a dual-display preset is sending a screen to an external display."</string>
-    <string name="focus_bottom_primary">"Bottom screen is the large one"</string>
-    <string name="focus_bottom_primary_desc">"Same as Swap screens. Off: the top screen fills the display and the bottom screen is the inset."</string>
-    <string name="focus_show_inset">"Show inset"</string>
-    <string name="focus_show_inset_desc">"Shows the other DS screen in a corner. Off shows only the large screen."</string>
-    <string name="focus_inset_size">"Inset size"</string>
-    <string name="focus_inset_size_desc">"Width of the inset as a share of the large screen's width."</string>
-    <string name="focus_inset_corner">"Inset corner"</string>
-    <string name="focus_inset_corner_desc">"Where the inset sits. The large screen moves away from it to use any spare space."</string>
+    <string name="focus_layout_desc">"One DS screen fills the display and the other appears as a small screen in a corner, on top of it. Has no effect while a dual-display preset is sending a screen to an external display."</string>
+    <string name="focus_bottom_primary">"Bottom screen is the big one"</string>
+    <string name="focus_bottom_primary_desc">"Same as Swap screens. Off: the top screen fills the display and the bottom screen is the small one."</string>
+    <string name="focus_show_inset">"Show small screen"</string>
+    <string name="focus_show_inset_desc">"Shows the other DS screen small, in a corner. Off shows only the big screen."</string>
+    <string name="focus_inset_size">"Small screen size"</string>
+    <string name="focus_inset_size_desc">"Width of the small screen as a share of the big screen's width."</string>
+    <string name="focus_inset_corner">"Small screen corner"</string>
+    <string name="focus_inset_corner_desc">"Which corner the small screen sits in. On displays wider or taller than 4:3, the big screen moves away from this corner so the small one covers less of it."</string>
     <string name="focus_corner_top_left">"Top left"</string>
     <string name="focus_corner_top_right">"Top right"</string>
     <string name="focus_corner_bottom_left">"Bottom left"</string>
     <string name="focus_corner_bottom_right">"Bottom right"</string>
     <string name="focus_peek_other_screen">"Peek other screen (hold)"</string>
-    <string name="focus_show_hide_inset">"Show/hide inset"</string>
+    <string name="focus_show_hide_inset">"Show/hide small screen"</string>
     <string name="focus_toggle_focus_layout">"Focus layout on/off"</string>
     <string name="menu_peek" translatable="false">"PEEK"</string>
-    <string name="menu_pip" translatable="false">"PIP"</string>
+    <string name="menu_pip" translatable="false">"MINI"</string>
     <string name="menu_focus" translatable="false">"FOC"</string>
     <string name="profile_mario_kart_ds">"Mario Kart DS"</string>
     <string name="profile_applied">"LessScreen profile for %1$s applied. Change it in this game's settings."</string>
+    <string name="update_group">"App updates"</string>
+    <string name="update_auto">"Check for updates"</string>
+    <string name="update_auto_desc">"When the library opens, looks for a newer LessScreenDS release on GitHub (at most every 6 hours) and offers to install it."</string>
+    <string name="update_check_now">"Check now"</string>
+    <string name="update_check_now_desc">"Looks for a newer release right away. This is version %1$s."</string>
+    <string name="update_available_title">"Update available"</string>
+    <string name="update_available_message">"LessScreenDS %1$s is available (you have %2$s). It downloads from GitHub, then Android asks you to confirm the install. Settings and saves are kept."</string>
+    <string name="update_install">"Update"</string>
+    <string name="update_later">"Later"</string>
+    <string name="update_downloading">"Downloading update… %1$d%%"</string>
+    <string name="update_found">"LessScreenDS %1$s is available. Install it from the game library."</string>
+    <string name="update_up_to_date">"You have the latest version (%1$s)."</string>
+    <string name="update_no_release">"No release found on GitHub."</string>
+    <string name="update_failed">"Update failed: %1$s"</string>
+    <string name="update_checksum_mismatch">"the download did not match the published checksum"</string>
+    <string name="update_allow_installs">"Allow LessScreenDS to install apps, then tap Update again."</string>
 </resources>

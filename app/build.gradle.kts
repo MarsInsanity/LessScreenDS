@@ -10,17 +10,26 @@ plugins {
 val coreDir = (project.findProperty("coreDir") as String?)
     ?: rootProject.file("core").absolutePath
 
+// LessScreenDS build identity. CI passes its run number so every published build has a higher
+// versionCode than the last; local builds are build 0. The update repository is only set for
+// CI release builds, which turns on the in-app updater.
+fun lsSetting(env: String, prop: String): String? =
+    System.getenv(env)?.takeIf { it.isNotBlank() } ?: (project.findProperty(prop) as String?)
+val lsBuildNumber = (lsSetting("LS_BUILD_NUMBER", "lsBuildNumber") ?: "0").toInt()
+val lsUpdateRepo = lsSetting("LS_UPDATE_REPO", "lsUpdateRepo") ?: ""
+
 android {
     namespace = "com.seedlessds.app"
     compileSdk = 35
     ndkVersion = "25.2.9519653"
 
     defaultConfig {
-        applicationId = "com.seedlessds.app"
+        applicationId = "com.lessscreends.app"
         minSdk = 21
         targetSdk = 35
-        versionCode = 111
-        versionName = "1.0.1"
+        versionCode = 1000 + lsBuildNumber
+        versionName = "1.0.1-ls.$lsBuildNumber"
+        buildConfigField("String", "UPDATE_REPO", "\"$lsUpdateRepo\"")
 
         ndk {
             abiFilters += "arm64-v8a"
@@ -46,13 +55,22 @@ android {
 
     signingConfigs {
         create("release") {
-            val local = Properties()
-            val localFile = rootProject.file("local.properties")
-            if (localFile.isFile) localFile.inputStream().use { local.load(it) }
-            local.getProperty("MELONDS_KEYSTORE")?.let { storeFile = file(it) }
-            storePassword = local.getProperty("MELONDS_KEYSTORE_PASSWORD") ?: ""
-            keyAlias = local.getProperty("MELONDS_KEY_ALIAS") ?: ""
-            keyPassword = local.getProperty("MELONDS_KEY_PASSWORD") ?: ""
+            val ciStore = System.getenv("LS_KEYSTORE_FILE")?.takeIf { it.isNotBlank() }
+            if (ciStore != null) {
+                // CI: the release key comes from repository secrets.
+                storeFile = file(ciStore)
+                storePassword = System.getenv("LS_KEYSTORE_PASSWORD") ?: ""
+                keyAlias = System.getenv("LS_KEY_ALIAS")?.takeIf { it.isNotBlank() } ?: "lessscreen"
+                keyPassword = System.getenv("LS_KEY_PASSWORD")?.takeIf { it.isNotBlank() } ?: storePassword
+            } else {
+                val local = Properties()
+                val localFile = rootProject.file("local.properties")
+                if (localFile.isFile) localFile.inputStream().use { local.load(it) }
+                local.getProperty("MELONDS_KEYSTORE")?.let { storeFile = file(it) }
+                storePassword = local.getProperty("MELONDS_KEYSTORE_PASSWORD") ?: ""
+                keyAlias = local.getProperty("MELONDS_KEY_ALIAS") ?: ""
+                keyPassword = local.getProperty("MELONDS_KEY_PASSWORD") ?: ""
+            }
         }
         create("shared") {
 
@@ -123,4 +141,6 @@ dependencies {
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
     testImplementation("junit:junit:4.13.2")
+    // Real org.json for unit tests (android.jar only has stubs).
+    testImplementation("org.json:json:20240303")
 }

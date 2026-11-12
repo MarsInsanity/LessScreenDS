@@ -21,6 +21,25 @@ class FocusLayoutTest {
         assertArrayEquals(floatArrayOf(806f, 754.5f, 434f, 325.5f), r.inset!!, eps)
     }
 
+    @Test fun fourByThreeDisplayIsFilledAndInsetOverlapsCorner() {
+        // Common single-screen handhelds: 640x480, 1024x768, 1280x960.
+        for ((w, h) in listOf(640f to 480f, 1024f to 768f, 1280f to 960f)) {
+            val r = compute(w, h)
+            assertArrayEquals(floatArrayOf(0f, 0f, w, h), r.primary, eps)
+            val iw = w * 0.35f
+            assertArrayEquals(floatArrayOf(w - iw, h - iw * 0.75f, iw, iw * 0.75f), r.inset!!, eps)
+        }
+    }
+
+    @Test fun fourByThreeEveryCornerStaysOnScreen() {
+        for (corner in FocusLayout.CORNER_TOP_LEFT..FocusLayout.CORNER_BOTTOM_RIGHT) {
+            val r = compute(640f, 480f, corner = corner)
+            assertArrayEquals(floatArrayOf(0f, 0f, 640f, 480f), r.primary, eps)
+            val i = r.inset!!
+            assertTrue(i[0] >= 0f && i[1] >= 0f && i[0] + i[2] <= 640f + eps && i[1] + i[3] <= 480f + eps)
+        }
+    }
+
     @Test fun hiddenInsetCentresPrimary() {
         val r = compute(1240f, 1080f, visible = false)
         assertArrayEquals(floatArrayOf(0f, 75f, 1240f, 930f), r.primary, eps)
