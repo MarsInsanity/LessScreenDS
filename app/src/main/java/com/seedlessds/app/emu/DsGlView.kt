@@ -28,6 +28,9 @@ class DsGlView(context: Context) : SurfaceView(context) {
 
     fun applyDisplaySettings() = queueEvent { renderer.reapplyDisplay() }
 
+    /** Re-lays out the screens without reloading the filter, for momentary changes such as peeking. */
+    fun applyGeometry() = queueEvent { renderer.rewriteGeometry() }
+
     @Volatile var onFirstFrame: (() -> Unit)? = null
 
     @Volatile private var padState = 0
@@ -64,7 +67,8 @@ class DsGlView(context: Context) : SurfaceView(context) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
                 val lx = (event.x - r[0]) / r[2]
                 val ly = (event.y - r[1]) / r[3]
-                if (lx in 0f..1f && ly in 0f..1f) {
+                val covered = renderer.topOverBottom && FocusLayout.contains(renderer.topScreenRect, event.x, event.y)
+                if (lx in 0f..1f && ly in 0f..1f && !covered) {
                     val dx = (lx * 255f).toInt().coerceIn(0, 255)
                     val dy = (ly * 191f).toInt().coerceIn(0, 191)
                     touchActive = true; touchPacked = (dx shl 16) or dy; pushInput()
@@ -321,6 +325,12 @@ class DsGlView(context: Context) : SurfaceView(context) {
         private var botPxW = 256; private var botPxH = 192
         var bottomScreenRect = floatArrayOf(0f, 0f, 0f, 0f)
         var topScreenRect = floatArrayOf(0f, 0f, 0f, 0f)
+        /** Focus layout: the inset's rectangle (for its frame), or null when no inset is shown. */
+        private var focusInset: FloatArray? = null
+        /** Focus layout with the bottom screen as the large one: draw it first so the top inset lands on it. */
+        private var drawBottomFirst = false
+        /** The top screen is drawn over part of the bottom screen, so touches there are not DS touches. */
+        @Volatile var topOverBottom = false
         private var texHires = false; private var tex16 = false
 
         private val nativeDeliveryRead: Boolean by lazy {
@@ -508,10 +518,15 @@ class DsGlView(context: Context) : SurfaceView(context) {
             geoVersion = DualScreenPresets.version
             geoExternal = ExternalSurface.attached
             val geo = FloatArray(24)
-            val (rawTop, rawBot) = rawRects(w, h, cfg)
             val zero = floatArrayOf(0f, 0f, 0f, 0f)
+            if (FocusLayout.active(cfg)) {
+                writeFocusGeometry(w, h, cfg, geo, zero)
+                return
+            }
+            focusInset = null; drawBottomFirst = false; topOverBottom = false
+            val (rawTop, rawBot) = rawRects(w, h, cfg)
             if (rawBot == null) {
-                val showingBottom = DualScreenPresets.singleBottom(cfg) != cfg.swapScreens
+                val showingBottom = DualScreenPresets.singleBottom(cfg) != FocusLayout.swapped(cfg)
                 val r = if (showingBottom)
                     xform(rawTop, w, h, ControlLayout.botScale, ControlLayout.botOffX, ControlLayout.botOffY)
                 else
@@ -524,7 +539,7 @@ class DsGlView(context: Context) : SurfaceView(context) {
             } else {
                 var slot0 = rawTop
                 var slot1 = rawBot
-                if (cfg.swapScreens) { val t = slot0; slot0 = slot1; slot1 = t }
+                if (FocusLayout.swapped(cfg)) { val t = slot0; slot0 = slot1; slot1 = t }
                 val topRect = xform(slot0, w, h, ControlLayout.topScale, ControlLayout.topOffX, ControlLayout.topOffY)
                 val botRect = xform(slot1, w, h, ControlLayout.botScale, ControlLayout.botOffX, ControlLayout.botOffY)
                 System.arraycopy(quadNdc(w, h, topRect), 0, geo, 0, 12)
@@ -536,6 +551,49 @@ class DsGlView(context: Context) : SurfaceView(context) {
             }
             writeVbo(0, geo)
             writeVbo(2208, FX_UV_BLOCK)
+        }
+
+        private fun writeFocusGeometry(w: Int, h: Int, cfg: DsSettings, geo: FloatArray, zero: FloatArray) {
+            val fr = FocusLayout.rects(w.toFloat(), h.toFloat(), cfg)
+            val bottomPrimary = FocusLayout.bottomPrimary(cfg)
+            val inset = fr.inset
+            val topRect = if (bottomPrimary) inset ?: zero else fr.primary
+            val botRect = if (bottomPrimary) fr.primary else inset ?: zero
+            if (topRect[2] > 0f) System.arraycopy(quadNdc(w, h, topRect), 0, geo, 0, 12)
+            if (botRect[2] > 0f) System.arraycopy(quadNdc(w, h, botRect), 0, geo, 12, 12)
+            val pw = fr.primary[2].toInt(); val ph = fr.primary[3].toInt()
+            // A hidden screen keeps the primary's size so the filter passes never see a 0x0 target.
+            topPxW = if (topRect[2] > 0f) topRect[2].toInt() else pw; topPxH = if (topRect[3] > 0f) topRect[3].toInt() else ph
+            botPxW = if (botRect[2] > 0f) botRect[2].toInt() else pw; botPxH = if (botRect[3] > 0f) botRect[3].toInt() else ph
+            topScreenRect = topRect
+            bottomScreenRect = botRect
+            focusInset = inset
+            drawBottomFirst = bottomPrimary
+            topOverBottom = bottomPrimary && inset != null
+            writeVbo(0, geo)
+            writeVbo(2208, FX_UV_BLOCK)
+        }
+
+        /** Frames the inset with a thin border so it reads as separate from the picture under it. */
+        private fun drawInsetFrame(r: FloatArray) {
+            val b = FocusLayout.BORDER_PX
+            val x0 = r[0].toInt(); val y0 = r[1].toInt()
+            val x1 = (r[0] + r[2]).toInt(); val y1 = (r[1] + r[3]).toInt()
+            GLES20.glEnable(GLES20.GL_SCISSOR_TEST)
+            GLES20.glClearColor(0.11f, 0.11f, 0.11f, 1f)
+            fun strip(l: Int, t: Int, rr: Int, bb: Int) {
+                val cl = l.coerceIn(0, viewW); val cr = rr.coerceIn(0, viewW)
+                val ct = t.coerceIn(0, viewH); val cb = bb.coerceIn(0, viewH)
+                if (cr <= cl || cb <= ct) return
+                GLES20.glScissor(cl, viewH - cb, cr - cl, cb - ct)
+                GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+            }
+            strip(x0 - b, y0 - b, x1 + b, y0)
+            strip(x0 - b, y1, x1 + b, y1 + b)
+            strip(x0 - b, y0, x0, y1)
+            strip(x1, y0, x1 + b, y1)
+            GLES20.glDisable(GLES20.GL_SCISSOR_TEST)
+            GLES20.glClearColor(0f, 0f, 0f, 1f)
         }
 
 
@@ -595,7 +653,12 @@ class DsGlView(context: Context) : SurfaceView(context) {
             ControlLayout.topScale, ControlLayout.topOffX, ControlLayout.topOffY,
             ControlLayout.botScale, ControlLayout.botOffX, ControlLayout.botOffY,
             DualScreenPresets.version, ExternalSurface.attached,
+            cfg.focusMode, cfg.focusInsetSize, cfg.focusInsetCorner, cfg.focusInsetVisible,
         ).joinToString("|")
+
+        fun rewriteGeometry() {
+            if (viewW != 0 && viewH != 0) writeScreenGeometry(viewW, viewH)
+        }
 
         fun reapplyDisplay() {
             if (viewW == 0 || viewH == 0) return
@@ -703,7 +766,12 @@ class DsGlView(context: Context) : SurfaceView(context) {
                 val page = com.seedlessds.app.SeedlessBridge.pageList()
                 if (page >= 0) { if (pageScaleShown == 0 || pageScaleShown == SettingsRepo.coreScale) copyPage(page) else uploadPage(page, pageScaleShown) }
             }
-            SeedlessCore.fxRender(topTex, bottomTex, 0, 6, 18, topPxW, topPxH, botPxW, botPxH, false)
+            if (drawBottomFirst)
+                // Last flag = 1: the core uploads the bottom screen into the first texture it draws.
+                SeedlessCore.fxRender(bottomTex, topTex, 6, 0, 18, botPxW, botPxH, topPxW, topPxH, true)
+            else
+                SeedlessCore.fxRender(topTex, bottomTex, 0, 6, 18, topPxW, topPxH, botPxW, botPxH, false)
+            focusInset?.let { drawInsetFrame(it) }
             if (fboRet != 0) {
                 com.seedlessds.app.SeedlessBridge.fboDest(0)
                 GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)

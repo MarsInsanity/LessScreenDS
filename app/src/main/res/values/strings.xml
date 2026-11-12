@@ -817,4 +817,27 @@
     <string name="settings_use_alt_app_icon">Use alt app icon</string>
     <string name="settings_alt_app_icon_summary">Use the smiling watermelon on your home screen.</string>
     <string name="settings_alt_app_icon_error">Could not change the app icon. Try again.</string>
+    <string name="focus_group">"Single-screen focus (LessScreen)"</string>
+    <string name="focus_layout">"Focus layout"</string>
+    <string name="focus_layout_desc">"One DS screen fills the display and the other floats as a small inset in a corner. Ignored while a dual-display preset is sending a screen to an external display."</string>
+    <string name="focus_bottom_primary">"Bottom screen is the large one"</string>
+    <string name="focus_bottom_primary_desc">"Same as Swap screens. Off: the top screen fills the display and the bottom screen is the inset."</string>
+    <string name="focus_show_inset">"Show inset"</string>
+    <string name="focus_show_inset_desc">"Shows the other DS screen in a corner. Off shows only the large screen."</string>
+    <string name="focus_inset_size">"Inset size"</string>
+    <string name="focus_inset_size_desc">"Width of the inset as a share of the large screen's width."</string>
+    <string name="focus_inset_corner">"Inset corner"</string>
+    <string name="focus_inset_corner_desc">"Where the inset sits. The large screen moves away from it to use any spare space."</string>
+    <string name="focus_corner_top_left">"Top left"</string>
+    <string name="focus_corner_top_right">"Top right"</string>
+    <string name="focus_corner_bottom_left">"Bottom left"</string>
+    <string name="focus_corner_bottom_right">"Bottom right"</string>
+    <string name="focus_peek_other_screen">"Peek other screen (hold)"</string>
+    <string name="focus_show_hide_inset">"Show/hide inset"</string>
+    <string name="focus_toggle_focus_layout">"Focus layout on/off"</string>
+    <string name="menu_peek" translatable="false">"PEEK"</string>
+    <string name="menu_pip" translatable="false">"PIP"</string>
+    <string name="menu_focus" translatable="false">"FOC"</string>
+    <string name="profile_mario_kart_ds">"Mario Kart DS"</string>
+    <string name="profile_applied">"LessScreen profile for %1$s applied. Change it in this game's settings."</string>
 </resources>

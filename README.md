@@ -12,6 +12,14 @@ SeedlessDS is the smaller sibling of WatermelonDS: the same watermelon idea, wit
 
 > **Current status:** `1.0.1`. The Android app uses [SeedlessCoreDS](core/README.md), a Nintendo DS emulation library reconstructed from DraStic r2.6.0.4a and built from source. The original DraStic APK and prebuilt core are not required to build or run SeedlessDS.
 
+## LessScreenDS: single-screen focus
+
+LessScreenDS is a fork aimed at handhelds with one display, where showing both DS screens at full size leaves each one small.
+
+- **Focus layout** (Settings → Screens → Single-screen focus): one DS screen fills the display and the other floats as an inset in a corner. You can set the inset's size and corner, or hide it. The large screen shifts away from the inset to use any spare space; on a 1240×1080 panel this puts the inset mostly in the strip below a 4:3 picture.
+- **Hotkeys**: *Peek other screen (hold)* swaps the screens only while held. *Show/hide inset* and *Focus layout on/off* are toggles. Map them to physical buttons in the gamepad mapper, or put them on the special on-screen buttons. The existing *Swap screens* hotkey chooses which screen is large.
+- **Built-in game profiles**: the game is identified by the code in its cartridge header, read from RAM after boot, so file names and archives don't matter. The first time a known game runs, its profile is saved as that game's per-game settings, which you can then edit or reset. Currently only Mario Kart DS (`AMC*`) has a profile: the top screen is large and the map inset sits bottom-right.
+
 ## What it is
 
 SeedlessDS combines a game library, settings, input mapping, save states, cheats and RetroAchievements with a renderer for one or two physical displays. The Android frontend and reconstructed core communicate through JNI and the core's C API.

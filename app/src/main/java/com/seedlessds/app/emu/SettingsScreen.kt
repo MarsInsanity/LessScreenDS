@@ -112,7 +112,8 @@ private class SettingsOptions(private val uiContext: android.content.Context) {
         "sharp_bilinear", "sharp_bilinear+nds_color", "lcd1x", "lcd1x+nds_color", "zfast_lcd", "zfast_lcd+nds_color")
     val extraFuncs = listOf(uiContext.getString(R.string.settings_off), uiContext.getString(R.string.common_fast_forward_2), uiContext.getString(R.string.common_quick_save_2), uiContext.getString(R.string.common_quick_load_2),
         uiContext.getString(R.string.common_swap_screens), uiContext.getString(R.string.common_swap_layouts_1_2), uiContext.getString(R.string.settings_show_hide_buttons),
-        uiContext.getString(R.string.common_microphone_noise), uiContext.getString(R.string.common_cycle_layouts), uiContext.getString(R.string.common_turbo_rapid_fire))
+        uiContext.getString(R.string.common_microphone_noise), uiContext.getString(R.string.common_cycle_layouts), uiContext.getString(R.string.common_turbo_rapid_fire),
+        uiContext.getString(R.string.focus_peek_other_screen), uiContext.getString(R.string.focus_show_hide_inset), uiContext.getString(R.string.focus_toggle_focus_layout))
     val menuPos = listOf(uiContext.getString(R.string.common_bottom), uiContext.getString(R.string.common_top), uiContext.getString(R.string.common_left), uiContext.getString(R.string.common_right), uiContext.getString(R.string.settings_hidden))
     val screenLayout = listOf(uiContext.getString(R.string.settings_landscape_1_1), uiContext.getString(R.string.settings_landscape_x_1), uiContext.getString(R.string.settings_vertical), uiContext.getString(R.string.common_integer_scale), uiContext.getString(R.string.settings_fullscreen))
     val rotation = listOf(uiContext.getString(R.string.settings_automatic), uiContext.getString(R.string.settings_landscape), uiContext.getString(R.string.settings_landscape_flipped), uiContext.getString(R.string.settings_portrait), uiContext.getString(R.string.settings_portrait_flipped))
@@ -481,6 +482,20 @@ fun SettingsScreen(
             DualScreenPresets.alignLabels(uiContext), s.dsExtAlign, enabled = align) { set(s.copy(dsExtAlign = it)) }
         return
     }
+
+    Group(uiContext.getString(R.string.focus_group))
+    SwitchRow(uiContext.getString(R.string.focus_layout), uiContext.getString(R.string.focus_layout_desc),
+        s.focusMode) { set(s.copy(focusMode = it)) }
+    SwitchRow(uiContext.getString(R.string.focus_bottom_primary), uiContext.getString(R.string.focus_bottom_primary_desc),
+        s.swapScreens, enabled = s.focusMode) { set(s.copy(swapScreens = it)) }
+    SwitchRow(uiContext.getString(R.string.focus_show_inset), uiContext.getString(R.string.focus_show_inset_desc),
+        s.focusInsetVisible, enabled = s.focusMode) { set(s.copy(focusInsetVisible = it)) }
+    NumberFieldRow(uiContext.getString(R.string.focus_inset_size), uiContext.getString(R.string.focus_inset_size_desc),
+        s.focusInsetSize, FocusLayout.INSET_MIN, FocusLayout.INSET_MAX, uiContext.getString(R.string.percent_unit), step = 5) {
+        set(s.copy(focusInsetSize = it))
+    }
+    DropdownRow(uiContext.getString(R.string.focus_inset_corner), uiContext.getString(R.string.focus_inset_corner_desc),
+        FocusLayout.cornerLabels(uiContext), s.focusInsetCorner, enabled = s.focusMode) { set(s.copy(focusInsetCorner = it)) }
 
     Group(uiContext.getString(R.string.common_dual_screen_presets))
     if (presetOn) {

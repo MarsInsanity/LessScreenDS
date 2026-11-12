@@ -273,7 +273,7 @@ class EmulatorActivity : ComponentActivity() {
 
     private fun applyOrientation() {
         val c = SettingsRepo.current
-        requestedOrientation = if (c.screenLayout == 2)
+        requestedOrientation = if (c.screenLayout == 2 && !c.focusMode)
             android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         else when (c.rotationMode) {
             1 -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE

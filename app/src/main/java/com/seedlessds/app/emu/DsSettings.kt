@@ -99,6 +99,10 @@ data class DsSettings(
     val customClock: Long = 0L,
     val autoload: Boolean = false,
     val smartEdit: Boolean = true,
+    val focusMode: Boolean = false,
+    val focusInsetSize: Int = FocusLayout.INSET_DEFAULT,
+    val focusInsetCorner: Int = FocusLayout.CORNER_BOTTOM_RIGHT,
+    val focusInsetVisible: Boolean = true,
 ) {
     fun withFrameskip(type: Int): DsSettings = copy(frameskipType = type, dynamicRes = dynamicRes && type == 0)
     fun withDynamicRes(on: Boolean): DsSettings = copy(dynamicRes = on, frameskipType = if (on) 0 else frameskipType)
@@ -305,6 +309,10 @@ object SettingsRepo {
             customClock = p.getLong("_CustomClock", d.customClock),
             autoload = p.getBoolean("_ShortcutAutoResume", d.autoload),
             smartEdit = p.getBoolean("_SmartEdit", d.smartEdit),
+            focusMode = p.getBoolean("_LsFocusMode", d.focusMode),
+            focusInsetSize = p.getInt("_LsInsetSize", d.focusInsetSize),
+            focusInsetCorner = p.getInt("_LsInsetCorner", d.focusInsetCorner),
+            focusInsetVisible = p.getBoolean("_LsInsetVisible", d.focusInsetVisible),
         ).let { it.withFrameskip(it.frameskipType) }
     }
 
@@ -402,6 +410,10 @@ object SettingsRepo {
             putLong("_CustomClock", s.customClock)
             putBoolean("_ShortcutAutoResume", s.autoload)
             putBoolean("_SmartEdit", s.smartEdit)
+            putBoolean("_LsFocusMode", s.focusMode)
+            putInt("_LsInsetSize", s.focusInsetSize)
+            putInt("_LsInsetCorner", s.focusInsetCorner)
+            putBoolean("_LsInsetVisible", s.focusInsetVisible)
         }
     }
 
@@ -503,6 +515,10 @@ object SettingsRepo {
         dl("_CustomClock", s.customClock, b.customClock)
         db("_ShortcutAutoResume", s.autoload, b.autoload)
         db("_SmartEdit", s.smartEdit, b.smartEdit)
+        db("_LsFocusMode", s.focusMode, b.focusMode)
+        di("_LsInsetSize", s.focusInsetSize, b.focusInsetSize)
+        di("_LsInsetCorner", s.focusInsetCorner, b.focusInsetCorner)
+        db("_LsInsetVisible", s.focusInsetVisible, b.focusInsetVisible)
     }
 
     fun runtimeUpdate(s: DsSettings) { current = s }

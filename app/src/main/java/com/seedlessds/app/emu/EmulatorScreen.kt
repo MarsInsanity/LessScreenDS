@@ -196,8 +196,15 @@ fun EmulatorScreen(
     }
     fun nextLayout(l: Int) = (l + 1) % 5
 
+    fun setPeek(on: Boolean) {
+        if (FocusLayout.peek == on) return
+        FocusLayout.peek = on
+        glView.applyGeometry()
+    }
+
     fun dispatchExtra(fn: Int, pressed: Boolean) {
         if (fn == 0) return
+        if (fn == 10) { setPeek(pressed); return }
         if (pressed) { if (fn == 7) SeedlessCore.whitenoise(true); return }
         when (fn) {
             1 -> { SettingsRepo.fastForward = !SettingsRepo.fastForward; glView.applyFastForward() }
@@ -209,6 +216,8 @@ fun EmulatorScreen(
             7 -> SeedlessCore.whitenoise(false)
             8 -> applyDisplayPersist { it.copy(screenLayout = nextLayout(it.screenLayout)) }
             9 -> glView.toggleRapidFire()
+            11 -> applyDisplayPersist { it.copy(focusInsetVisible = !it.focusInsetVisible) }
+            12 -> applyDisplayPersist { it.copy(focusMode = !it.focusMode) }
         }
     }
 
@@ -217,7 +226,26 @@ fun EmulatorScreen(
     }
     androidx.compose.runtime.DisposableEffect(Unit) {
         ExtraKeyRouter.handler = { fn, pressed -> extras.value(fn, pressed) }
-        onDispose { ExtraKeyRouter.handler = null }
+        onDispose { ExtraKeyRouter.handler = null; FocusLayout.peek = false }
+    }
+    // A menu swallows key releases, so a held peek would otherwise stay on.
+    androidx.compose.runtime.LaunchedEffect(emulationBlocked) { if (emulationBlocked) setPeek(false) }
+
+    // Built-in single-screen profiles: once the game is running its header is in RAM, so the
+    // game code is known whatever the ROM's file name or archive format.
+    androidx.compose.runtime.LaunchedEffect(coreReady) {
+        if (!coreReady) return@LaunchedEffect
+        val code = GameProfiles.readGameCode() ?: return@LaunchedEffect
+        com.seedlessds.app.AppLog.i("lessscreen", "game code $code")
+        val profile = GameProfiles.forCode(code) ?: return@LaunchedEffect
+        if (com.seedlessds.app.control.RuntimeControl.settings != null) return@LaunchedEffect
+        if (SettingsRepo.hasPerGame(ctx, gameTitle) || GameProfiles.wasApplied(ctx, code)) return@LaunchedEffect
+        GameProfiles.markApplied(ctx, code)
+        val next = profile.apply(SettingsRepo.current)
+        perGame = next
+        onApplyPerGame(next)
+        android.widget.Toast.makeText(ctx, uiContext.getString(R.string.profile_applied, uiContext.getString(profile.name)),
+            android.widget.Toast.LENGTH_LONG).show()
     }
 
     BackHandler(enabled = editingControls) {
@@ -750,7 +778,8 @@ private fun MenuTile(option: MenuOption, selected: Boolean, onFocus: () -> Unit)
 }
 
 private val EXTRA_LABELS = mapOf(
-    1 to R.string.menu_ff, 2 to R.string.menu_qs, 3 to R.string.menu_ql, 4 to R.string.swap_screens_symbol, 5 to R.string.menu_1_2, 6 to R.string.toggle_controls_symbol, 7 to R.string.menu_mic, 8 to R.string.cycle_layouts_symbol, 9 to R.string.menu_tb
+    1 to R.string.menu_ff, 2 to R.string.menu_qs, 3 to R.string.menu_ql, 4 to R.string.swap_screens_symbol, 5 to R.string.menu_1_2, 6 to R.string.toggle_controls_symbol, 7 to R.string.menu_mic, 8 to R.string.cycle_layouts_symbol, 9 to R.string.menu_tb,
+    10 to R.string.menu_peek, 11 to R.string.menu_pip, 12 to R.string.menu_focus,
 )
 
 @Composable

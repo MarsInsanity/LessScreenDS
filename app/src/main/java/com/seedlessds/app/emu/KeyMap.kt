@@ -29,6 +29,9 @@ object KeyMap {
         Special(7, R.string.common_microphone_noise),
         Special(8, R.string.common_cycle_layouts),
         Special(9, R.string.common_turbo_rapid_fire),
+        Special(10, R.string.focus_peek_other_screen),
+        Special(11, R.string.focus_show_hide_inset),
+        Special(12, R.string.focus_toggle_focus_layout),
     )
 
     private val defaults = mapOf(
